@@ -1,0 +1,12 @@
+# created by virtualenv automatically
+fakejobscraper.py
+fakesite.html
+geckodriver.log
+info.txt
+pyenv.cfg
+testScraper.py
+testSite.html
+Lib
+Scripts
+seleniumScraper.py
+seleniumSite.html
