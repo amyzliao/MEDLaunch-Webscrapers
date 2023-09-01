@@ -1,5 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MAPBOX_URL = os.getenv("MAPBOX_URL")
+HASHED_EMAIL = os.getenv('HASHED_EMAIL')
+POST_URL = os.getenv('POST_URL')
+
+def process_areas(areas_list):
+    if 'All' in areas_list:
+        return ''
+    return ','.join(areas_list)
+
+def process_categories(categories_list):
+    newList = []
+    for cat in categories_list:
+        if cat == 'Volunteer':
+            newList.append('Volunteering')
+        else:
+            newList.append(cat)
+    return ','.join(newList)
 
 def format_p(p):
     p_parts = list(p.strings)
@@ -14,8 +36,30 @@ def scrape_opp_list(url):
     results = soup.find(id="opportunity-content")
     # print(results.encode('utf8'))
     opp_elements = results.find_all('div', class_='opportunity')
-    for opp_element in opp_elements:
-        title = opp_element.find('h2')
+    for i, opp_element in enumerate(opp_elements):
+        if i == 0:
+            continue
+        dict = {
+            'hashedemail': HASHED_EMAIL,
+            'opp_name': '',
+            'Website': '',
+            'Email': '',
+            'area_of_study': '',
+            'Institution': '',
+            'Location': '',
+            'opp_type': '',
+            'Dates': '',
+            'Grade': [],
+            'Age': '',
+            'app_deadline': '',
+            'Stipend': '',
+            'Description': '',
+            'app_requirements': '',
+            'latitude': None,
+            'longitude': None,
+            'specific_dates': ''
+        }
+        title = opp_element.find('h2').text
         des_section = opp_element.find('div', class_='description')
         description = des_section.find_all('p', class_='')    
         description = list(map(format_p, description))
@@ -52,23 +96,27 @@ def scrape_opp_list(url):
         if link:
             website = link.find('a')['href']
 
-        print('TITLE')
-        print(title.text)
-        print("DESCRIPTION")
-        print(description)
-        # print(description.encode('utf8'))
-        # print(''.join(description).text.encode('utf8'))
-        print('WEBSITE')
-        print(website)
-        print("AREAS")
-        print(areas)
-        print("LOCATION")
-        print(location)
-        print('SPECIFIC DATES')
-        print(specific_dates)
-        print("CATEGORIES")
-        print(categories)
+        dict['opp_name'] = title
+        dict['Description'] = description
+        dict['Website'] = website
+        dict['area_of_study'] = process_areas(areas)
+        dict['specific_dates'] = specific_dates
+        dict['opp_type'] = process_categories(categories)
+        dict['Location'] = location
+        if location != '':
+            response = requests.get(MAPBOX_URL, params={'location': location})
+            dict['latitude'] = response.json()['latitude']
+            dict['longitude'] = response.json()['longitude']
 
+        
+
+        print(i)
+        # print(dict)
+        print(title)
+        # post to database
+        response = requests.post(POST_URL, data=dict)
+        print(response.json())
         print()
+        
 
 scrape_opp_list('https://www.northwestern.edu/health-professions-advising/experiences/explore-opportunities/')
